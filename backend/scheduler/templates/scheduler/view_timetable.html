@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Timetable for {{ section.name }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #e0e7ff 0%, #fbc2eb 100%);
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        .dashboard-card {
+            background: #fff;
+            border-radius: 1rem;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            padding: 2rem;
+            margin-top: 2rem;
+            animation: fadeIn 0.7s;
+        }
+        table, th, td {
+            border: 1px solid #b3b3b3;
+            border-collapse: collapse;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #e0e7ff;
+            color: #4f46e5;
+        }
+        td {
+            background-color: #f8fafc;
+        }
+        .day-cell {
+            font-weight: bold;
+            color: #6366f1;
+        }
+        .subject-cell {
+            color: #a21caf;
+            font-weight: 600;
+        }
+        .faculty-cell {
+            color: #059669;
+        }
+        .room-cell {
+            color: #db2777;
+            font-size: 0.9em;
+        }
+        .icon {
+            font-size: 1.2em;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
+        .json-preview {
+            background: #111827;
+            color: #a7f3d0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 2rem;
+            font-size: 0.95em;
+            max-height: 300px;
+            overflow: auto;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="dashboard-card">
+            <div class="d-flex align-items-center mb-3">
+                <i class="bi bi-calendar3 icon text-primary"></i>
+                <h2 class="mb-0">Timetable - Section {{ section.name }}</h2>
+            </div>
+            <p class="text-secondary mb-4">
+                <i class="bi bi-info-circle"></i>
+                This is your generated timetable. No overlaps, easy to read, and ready to export!
+            </p>
+            <table class="w-100">
+                <tr>
+                    <th>Day / Period</th>
+                    {% for period in periods %}
+                        <th>Period {{ period }}</th>
+                    {% endfor %}
+                </tr>
+                {% for day_num, day_name in days.items %}
+                <tr>
+                    <td class="day-cell">{{ day_name }}</td>
+                    {% for period in periods %}
+                        <td>
+                            {% for session in timetable %}
+                                {% if session.slot.day == day_num and session.slot.period_number == period %}
+                                    <span class="subject-cell"><i class="bi bi-book"></i> {{ session.subject.name }}</span><br/>
+                                    <span class="faculty-cell"><i class="bi bi-person"></i> {{ session.faculty.name }}</span><br/>
+                                    <span class="room-cell"><i class="bi bi-house"></i> {{ session.room.name }}</span>
+                                {% endif %}
+                            {% endfor %}
+                        </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </table>
+            <button class="btn btn-outline-primary mt-4" onclick="document.getElementById('json-preview').style.display='block'">
+                <i class="bi bi-file-earmark-code"></i> Show Raw JSON
+            </button>
+            <div id="json-preview" class="json-preview" style="display:none;">
+                {{ timetable|safe|json_script:"timetable_json" }}
+                <pre>{{ timetable|safe|json_script:"timetable_json" }}</pre>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

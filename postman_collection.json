@@ -1,0 +1,90 @@
+{
+  "info": {
+    "name": "Timetable Generator API",
+    "description": "API collection for testing timetable generation with MCA sections",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Generate Timetable - MCA Sections A & B",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"institute\": {\n    \"course\": \"MCA\",\n    \"academicYear\": \"2024-25\",\n    \"workingDays\": 5,\n    \"periodsPerDay\": 6,\n    \"periodDuration\": 60\n  },\n  \"rooms\": [\n    {\n      \"name\": \"Room 101\",\n      \"isLab\": false\n    },\n    {\n      \"name\": \"Room 102\",\n      \"isLab\": false\n    },\n    {\n      \"name\": \"Computer Lab 1\",\n      \"isLab\": true\n    },\n    {\n      \"name\": \"Computer Lab 2\",\n      \"isLab\": true\n    },\n    {\n      \"name\": \"Room 103\",\n      \"isLab\": false\n    }\n  ],\n  \"faculties\": [\n    {\n      \"name\": \"Dr. Smith\",\n      \"empId\": \"FAC001\"\n    },\n    {\n      \"name\": \"Prof. Johnson\",\n      \"empId\": \"FAC002\"\n    },\n    {\n      \"name\": \"Dr. Williams\",\n      \"empId\": \"FAC003\"\n    },\n    {\n      \"name\": \"Prof. Brown\",\n      \"empId\": \"FAC004\"\n    },\n    {\n      \"name\": \"Dr. Davis\",\n      \"empId\": \"FAC005\"\n    },\n    {\n      \"name\": \"Prof. Miller\",\n      \"empId\": \"FAC006\"\n    }\n  ],\n  \"academics\": [\n    {\n      \"semester\": 1,\n      \"sections\": [\"A\", \"B\"],\n      \"subjects\": [\n        {\n          \"name\": \"Programming Fundamentals\",\n          \"faculty\": \"Dr. Smith\"\n        },\n        {\n          \"name\": \"Mathematics for Computing\",\n          \"faculty\": \"Prof. Johnson\"\n        },\n        {\n          \"name\": \"Computer Organization\",\n          \"faculty\": \"Dr. Williams\"\n        },\n        {\n          \"name\": \"English Communication\",\n          \"faculty\": \"Prof. Brown\"\n        }\n      ]\n    },\n    {\n      \"semester\": 3,\n      \"sections\": [\"A\", \"B\"],\n      \"subjects\": [\n        {\n          \"name\": \"Data Structures\",\n          \"faculty\": \"Dr. Smith\"\n        },\n        {\n          \"name\": \"Database Management\",\n          \"faculty\": \"Dr. Davis\"\n        },\n        {\n          \"name\": \"Web Technologies\",\n          \"faculty\": \"Prof. Miller\"\n        },\n        {\n          \"name\": \"Software Engineering\",\n          \"faculty\": \"Dr. Williams\"\n        }\n      ]\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/generate/",
+          "host": ["{{base_url}}"],
+          "path": ["generate", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "View Timetable - Section 1 (1st Sem A)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/view/1/",
+          "host": ["{{base_url}}"],
+          "path": ["view", "1", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "View Timetable - Section 2 (1st Sem B)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/view/2/",
+          "host": ["{{base_url}}"],
+          "path": ["view", "2", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "View Timetable - Section 3 (3rd Sem A)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/view/3/",
+          "host": ["{{base_url}}"],
+          "path": ["view", "3", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "View Timetable - Section 4 (3rd Sem B)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/view/4/",
+          "host": ["{{base_url}}"],
+          "path": ["view", "4", ""]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/generate",
+      "type": "string"
+    }
+  ]
+}

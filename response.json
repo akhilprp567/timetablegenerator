@@ -1,0 +1,116 @@
+{
+    "section": "A",
+    "days": [
+        "Mon",
+        "Tue",
+        "Wed",
+        "Thu",
+        "Fri"
+    ],
+    "periods": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6"
+    ],
+    "timetable": [
+        {
+            "day": "Mon",
+            "period": 1,
+            "subject": "Programming Fundamentals",
+            "faculty": "Dr. Smith",
+            "room": "Room 101",
+            "is_lab": false
+        },
+        {
+            "day": "Mon",
+            "period": 2,
+            "subject": "Programming Fundamentals",
+            "faculty": "Dr. Smith",
+            "room": "Room 101",
+            "is_lab": false
+        },
+        {
+            "day": "Mon",
+            "period": 3,
+            "subject": "Programming Fundamentals",
+            "faculty": "Dr. Smith",
+            "room": "Room 101",
+            "is_lab": false
+        },
+        {
+            "day": "Mon",
+            "period": 4,
+            "subject": "Programming Fundamentals",
+            "faculty": "Dr. Smith",
+            "room": "Room 101",
+            "is_lab": false
+        },
+        {
+            "day": "Mon",
+            "period": 5,
+            "subject": "Mathematics for Computing",
+            "faculty": "Prof. Johnson",
+            "room": "Room 101",
+            "is_lab": false
+        },
+        {
+            "day": "Mon",
+            "period": 6,
+            "subject": "Mathematics for Computing",
+            "faculty": "Prof. Johnson",
+            "room": "Room 101",
+            "is_lab": false
+        },
+        {
+            "day": "Tue",
+            "period": 1,
+            "subject": "Mathematics for Computing",
+            "faculty": "Prof. Johnson",
+            "room": "Room 101",
+            "is_lab": false
+        },
+        {
+            "day": "Tue",
+            "period": 2,
+            "subject": "Computer Organization",
+            "faculty": "Dr. Williams",
+            "room": "Room 101",
+            "is_lab": false
+        },
+        {
+            "day": "Tue",
+            "period": 3,
+            "subject": "Computer Organization",
+            "faculty": "Dr. Williams",
+            "room": "Room 101",
+            "is_lab": false
+        },
+        {
+            "day": "Tue",
+            "period": 4,
+            "subject": "Computer Organization",
+            "faculty": "Dr. Williams",
+            "room": "Room 101",
+            "is_lab": false
+        },
+        {
+            "day": "Tue",
+            "period": 5,
+            "subject": "English Communication",
+            "faculty": "Prof. Brown",
+            "room": "Room 101",
+            "is_lab": false
+        },
+        {
+            "day": "Tue",
+            "period": 6,
+            "subject": "English Communication",
+            "faculty": "Prof. Brown",
+            "room": "Room 101",
+            "is_lab": false
+        }
+    ]
+}

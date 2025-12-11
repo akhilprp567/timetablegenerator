@@ -1,0 +1,121 @@
+{
+  "institute": {
+    "course": "MCA",
+    "academicYear": "2024-25",
+    "workingDays": 5,
+    "periodsPerDay": 6,
+    "periodDuration": 60
+  },
+  "rooms": [
+    {
+      "name": "Room 101",
+      "isLab": false
+    },
+    {
+      "name": "Room 102", 
+      "isLab": false
+    },
+    {
+      "name": "Room 103",
+      "isLab": false
+    },
+    {
+      "name": "Computer Lab 1",
+      "isLab": true
+    },
+    {
+      "name": "Computer Lab 2", 
+      "isLab": true
+    }
+  ],
+  "faculties": [
+    {
+      "name": "Dr. Smith",
+      "empId": "FAC001"
+    },
+    {
+      "name": "Prof. Johnson",
+      "empId": "FAC002"
+    },
+    {
+      "name": "Dr. Williams", 
+      "empId": "FAC003"
+    },
+    {
+      "name": "Prof. Brown",
+      "empId": "FAC004"
+    },
+    {
+      "name": "Dr. Davis",
+      "empId": "FAC005"
+    },
+    {
+      "name": "Prof. Miller",
+      "empId": "FAC006"
+    }
+  ],
+  "academics": [
+    {
+      "semester": 1,
+      "sections": ["A", "B"],
+      "subjects": [
+        {
+          "name": "Programming Fundamentals",
+          "faculty": "Dr. Smith",
+          "weeklyHours": 4,
+          "isLab": false
+        },
+        {
+          "name": "Mathematics for Computing", 
+          "faculty": "Prof. Johnson",
+          "weeklyHours": 3,
+          "isLab": false
+        },
+        {
+          "name": "Computer Organization",
+          "faculty": "Dr. Williams",
+          "weeklyHours": 3,
+          "isLab": false
+        },
+        {
+          "name": "English Communication",
+          "faculty": "Prof. Brown", 
+          "weeklyHours": 2,
+          "isLab": false
+        }
+      ]
+    },
+    {
+      "semester": 3,
+      "sections": ["A", "B"],
+      "subjects": [
+        {
+          "name": "Data Structures",
+          "faculty": "Dr. Smith",
+          "weeklyHours": 4,
+          "isLab": true,
+          "labHours": 2
+        },
+        {
+          "name": "Database Management",
+          "faculty": "Dr. Davis",
+          "weeklyHours": 3,
+          "isLab": false
+        },
+        {
+          "name": "Web Technologies",
+          "faculty": "Prof. Miller",
+          "weeklyHours": 4,
+          "isLab": true,
+          "labHours": 2
+        },
+        {
+          "name": "Software Engineering",
+          "faculty": "Dr. Williams",
+          "weeklyHours": 3,
+          "isLab": false
+        }
+      ]
+    }
+  ]
+}
