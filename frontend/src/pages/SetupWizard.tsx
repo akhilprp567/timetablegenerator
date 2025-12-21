@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Building2, BookOpen, Users, Home, CheckCircle2, Info, CalendarDays, Loader2, Plus, Trash2, AlertCircle } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { getSubjectsByCourse, VTU_SUBJECTS } from "@/constants/vtuSubjects";
 
 const steps = [
 	{ value: "step1", label: "Institute", icon: <Building2 size={18} className="text-blue-500" /> },
@@ -692,18 +693,35 @@ export default function SetupWizard() {
 										<label className="block mt-4 mb-1 font-medium text-gray-700">Subjects</label>
 										{sem.subjects.map((subj, subjIdx) => (
 											<div key={subjIdx} className="flex gap-2 mt-2">
-												<input
-													placeholder="Subject Name"
-													className="border p-2 rounded w-full"
+												<select
+													className="border p-2 rounded flex-1 focus:ring-2 focus:ring-pink-500"
 													value={subj.name}
 													onChange={(e) => {
 														const academics = [...formData.academics];
 														academics[semIdx].subjects[subjIdx].name = e.target.value;
 														setFormData({ ...formData, academics });
 													}}
-												/>
+												>
+													<option value="">Select Subject</option>
+													{formData.institute.course ? (
+														(() => {
+															const subjects = getSubjectsByCourse(formData.institute.course);
+															return subjects.length > 0 ? (
+																subjects.map((subject, i) => (
+																	<option key={i} value={subject}>
+																		{subject}
+																	</option>
+																))
+															) : (
+																<option disabled>No subjects found for "{formData.institute.course}"</option>
+															);
+														})()
+													) : (
+														<option disabled>Please select a course first (Step 1)</option>
+													)}
+												</select>
 												<select
-													className="border p-2 rounded"
+													className="border p-2 rounded focus:ring-2 focus:ring-pink-500"
 													value={subj.faculty}
 													onChange={(e) => {
 														const academics = [...formData.academics];
@@ -718,6 +736,18 @@ export default function SetupWizard() {
 														</option>
 													))}
 												</select>
+												<Button
+													variant="outline"
+													size="sm"
+													onClick={() => {
+														const academics = [...formData.academics];
+														academics[semIdx].subjects.splice(subjIdx, 1);
+														setFormData({ ...formData, academics });
+													}}
+													className="text-red-600 border-red-300 hover:bg-red-50"
+												>
+													<Trash2 size={16} />
+												</Button>
 											</div>
 										))}
 										<Button
@@ -725,7 +755,7 @@ export default function SetupWizard() {
 											className="mt-2"
 											onClick={() => {
 												const academics = [...formData.academics];
-												academics[semIdx].subjects.push({ name: "", faculty: "" });
+												academics[semIdx].subjects.push({ name: "", faculty: "", weeklyHours: 3, isLab: false, labHours: 0 });
 												setFormData({ ...formData, academics });
 											}}
 										>

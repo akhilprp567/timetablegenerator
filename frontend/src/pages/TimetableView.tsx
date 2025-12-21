@@ -30,7 +30,6 @@ export default function TimetableView() {
       try {
         const token = localStorage.getItem("token");
         
-        // Fetch timetable data
         const res = await axios.get(
           `http://127.0.0.1:8000/timetable/view/${sectionId || 1}/`,
           {
@@ -41,7 +40,6 @@ export default function TimetableView() {
         );
         setTimetableData(res.data);
         
-        // Fetch navigation data
         const navRes = await axios.get(
           `http://127.0.0.1:8000/timetable/navigation/${sectionId || 1}/`,
           {
@@ -52,7 +50,6 @@ export default function TimetableView() {
         );
         setNavigationData(navRes.data);
         
-        // Set institution data
         setInstitutionData({
           name: user?.institution || "Sample Institution",
           course: "MCA",
@@ -73,8 +70,24 @@ export default function TimetableView() {
     fetchTimetable();
   }, [sectionId, user, navigate]);
 
-  const handleDownload = () => {
-    // Generate PDF instead of JSON
+  const handleDownloadJSON = () => {
+    if (!timetableData) return;
+    
+    const jsonString = JSON.stringify(timetableData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `timetable-section-${timetableData.section}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrintPDF = () => {
+    if (!timetableData) return;
+
     const printContent = generatePrintHTML();
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -85,26 +98,8 @@ export default function TimetableView() {
     printWindow.document.write(printContent);
     printWindow.document.close();
     
-    // Auto print/save as PDF
     printWindow.onload = () => {
       printWindow.print();
-      printWindow.close();
-    };
-  };
-
-  const handlePrintPDF = () => {
-    // Create a new window for printing
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
-    const printContent = generatePrintHTML();
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    
-    // Wait for content to load, then print
-    printWindow.onload = () => {
-      printWindow.print();
-      printWindow.close();
     };
   };
 
@@ -119,95 +114,33 @@ export default function TimetableView() {
         <head>
           <title>Timetable - ${institutionData?.section || 'Section'}</title>
           <style>
-            body {
-              font-family: Arial, sans-serif;
-              margin: 20px;
-              color: #333;
-            }
-            .header {
-              text-align: center;
-              margin-bottom: 30px;
-              border-bottom: 2px solid #e2e8f0;
-              padding-bottom: 20px;
-            }
-            .institution-name {
-              font-size: 24px;
-              font-weight: bold;
-              color: #1e40af;
-              margin-bottom: 5px;
-            }
-            .course-info {
-              font-size: 18px;
-              color: #6b7280;
-              margin-bottom: 10px;
-            }
-            .section-info {
-              font-size: 16px;
-              color: #374151;
-            }
-            .timetable-table {
-              width: 100%;
-              border-collapse: collapse;
-              margin-top: 20px;
-              font-size: 12px;
-            }
-            .timetable-table th,
-            .timetable-table td {
-              border: 1px solid #d1d5db;
-              padding: 8px;
-              text-align: center;
-              vertical-align: middle;
-            }
-            .timetable-table th {
-              background-color: #f3f4f6;
-              font-weight: bold;
-              color: #374151;
-            }
-            .day-header {
-              background-color: #dbeafe;
-              font-weight: bold;
-              color: #1e40af;
-            }
-            .subject-name {
-              font-weight: bold;
-              color: #7c3aed;
-              margin-bottom: 2px;
-            }
-            .faculty-name {
-              color: #059669;
-              margin-bottom: 2px;
-            }
-            .room-name {
-              color: #dc2626;
-              font-size: 10px;
-            }
-            .empty-cell {
-              color: #9ca3af;
-            }
-            .footer {
-              margin-top: 30px;
-              text-align: center;
-              font-size: 12px;
-              color: #6b7280;
-            }
-            @media print {
-              body { margin: 0; }
-              .no-print { display: none !important; }
-            }
+            body { font-family: Arial, sans-serif; margin: 20px; color: #333; }
+            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; }
+            .institution-name { font-size: 24px; font-weight: bold; color: #1e40af; margin-bottom: 5px; }
+            .course-info { font-size: 18px; color: #6b7280; margin-bottom: 10px; }
+            .section-info { font-size: 16px; color: #374151; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+            th, td { border: 1px solid #d1d5db; padding: 8px; text-align: center; }
+            th { background-color: #f3f4f6; font-weight: bold; }
+            .day-header { background-color: #dbeafe; font-weight: bold; color: #1e40af; }
+            .subject { font-weight: bold; color: #7c3aed; }
+            .faculty { color: #059669; }
+            .room { color: #dc2626; font-size: 10px; }
+            .empty { color: #9ca3af; }
+            @media print { body { margin: 0; } }
           </style>
         </head>
         <body>
           <div class="header">
-            <div class="institution-name">${institutionData?.name || 'Institution Name'}</div>
-            <div class="course-info">${institutionData?.course || 'Course'} - ${institutionData?.academicYear || 'Academic Year'}</div>
-            <div class="section-info">Section: ${institutionData?.section || 'Section'} | Generated on: ${new Date().toLocaleDateString()}</div>
+            <div class="institution-name">${institutionData?.name || 'Institution'}</div>
+            <div class="course-info">${institutionData?.course || 'Course'} - ${institutionData?.academicYear || '2024-25'}</div>
+            <div class="section-info">Section: ${institutionData?.section || 'Section'}</div>
           </div>
-          
-          <table class="timetable-table">
+          <table>
             <thead>
               <tr>
-                <th>Day / Period</th>
-                ${periods.map(period => `<th>Period ${period}</th>`).join('')}
+                <th>Day</th>
+                ${periods.map(p => `<th>P${p}</th>`).join('')}
               </tr>
             </thead>
             <tbody>
@@ -216,24 +149,12 @@ export default function TimetableView() {
                   <td class="day-header">${day}</td>
                   ${periods.map(period => {
                     const session = timetable.find((s: any) => s.day === day && String(s.period) === String(period));
-                    return `
-                      <td>
-                        ${session ? `
-                          <div class="subject-name">${session.subject}</div>
-                          <div class="faculty-name">${session.faculty}</div>
-                          <div class="room-name">${session.room}</div>
-                        ` : '<span class="empty-cell">-</span>'}
-                      </td>
-                    `;
+                    return `<td>${session ? `<div class="subject">${session.subject}</div><div class="faculty">${session.faculty}</div><div class="room">${session.room}</div>` : '<span class="empty">-</span>'}</td>`;
                   }).join('')}
                 </tr>
               `).join('')}
             </tbody>
           </table>
-          
-          <div class="footer">
-            <p>Generated by Timetable Generator System</p>
-          </div>
         </body>
       </html>
     `;
@@ -247,7 +168,6 @@ export default function TimetableView() {
     navigate("/dashboard");
   };
 
-  // Prepare days/periods from backend data
   const days = timetableData?.days || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
   const periods = timetableData?.periods || ["1", "2", "3", "4", "5", "6"];
   const timetable = timetableData?.timetable || [];
@@ -267,35 +187,19 @@ export default function TimetableView() {
             </div>
           </div>
           <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={handleBackToDashboard}
-              className="text-gray-700"
-            >
+            <Button variant="outline" onClick={handleBackToDashboard} className="text-gray-700">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Dashboard
             </Button>
-            <Button
-              variant="default"
-              onClick={handleDownload}
-              className="bg-gradient-to-r from-blue-500 to-purple-500 text-white"
-            >
+            <Button onClick={handleDownloadJSON} className="bg-blue-500 text-white">
               <Download className="w-4 h-4 mr-2" />
               JSON
             </Button>
-            <Button
-              variant="outline"
-              onClick={handlePrintPDF}
-              className="text-blue-700 border-blue-400"
-            >
+            <Button onClick={handlePrintPDF} className="bg-green-500 text-white">
               <FileText className="w-4 h-4 mr-2" />
               Print PDF
             </Button>
-            <Button
-              variant="outline"
-              onClick={handleEdit}
-              className="text-green-700 border-green-400"
-            >
+            <Button onClick={handleEdit} className="bg-purple-500 text-white">
               <Pencil className="w-4 h-4 mr-2" />
               Edit
             </Button>
@@ -307,76 +211,58 @@ export default function TimetableView() {
         {/* Sidebar */}
         <div className="w-72 bg-white/80 backdrop-blur-sm border-r border-blue-200 min-h-screen p-6">
           <div className="space-y-6">
-            {/* Institution Info */}
             <div className="bg-blue-50 rounded-lg p-4">
               <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
                 <Building2 size={18} />
                 Institution Details
               </h3>
               <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <GraduationCap size={14} className="text-blue-600" />
-                  <span className="text-gray-600">Course:</span>
-                  <span className="font-medium">{institutionData?.course}</span>
+                <div><span className="text-gray-600">Course:</span> <span className="font-medium">{institutionData?.course}</span></div>
+                <div><span className="text-gray-600">Year:</span> <span className="font-medium">{institutionData?.academicYear}</span></div>
+                <div><span className="text-gray-600">Section:</span> <span className="font-medium">{institutionData?.section}</span></div>
+              </div>
+            </div>
+
+            <div className="bg-purple-50 rounded-lg p-4">
+              <h4 className="font-semibold text-purple-800 mb-2 flex items-center gap-2">
+                <BookOpen size={16} />
+                Quick Stats
+              </h4>
+              <div className="text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Total Sessions:</span>
+                  <span className="font-medium">{timetable.length}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Calendar size={14} className="text-blue-600" />
-                  <span className="text-gray-600">Year:</span>
-                  <span className="font-medium">{institutionData?.academicYear}</span>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Working Days:</span>
+                  <span className="font-medium">{days.length}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Users size={14} className="text-blue-600" />
-                  <span className="text-gray-600">Section:</span>
-                  <span className="font-medium">{institutionData?.section}</span>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Periods/Day:</span>
+                  <span className="font-medium">{periods.length}</span>
                 </div>
               </div>
             </div>
 
-            {/* Quick Stats */}
-            <div className="space-y-4">
-              <div className="bg-purple-50 rounded-lg p-4">
-                <h4 className="font-semibold text-purple-800 mb-2 flex items-center gap-2">
-                  <BookOpen size={16} />
-                  Quick Stats
-                </h4>
-                <div className="text-sm space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Total Sessions:</span>
-                    <span className="font-medium">{timetable.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Working Days:</span>
-                    <span className="font-medium">{days.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Periods/Day:</span>
-                    <span className="font-medium">{periods.length}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-green-50 rounded-lg p-4">
-                <h4 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
-                  <Home size={16} />
-                  Navigation
-                </h4>
-                <div className="space-y-2">
-                  {navigationData?.all_sections?.map((section: any) => (
-                    <Button
-                      key={section.id}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/timetable/${section.id}`)}
-                      className={`w-full text-left justify-start ${
-                        section.id === parseInt(sectionId || '0') 
-                          ? 'bg-green-100 border-green-400' 
-                          : ''
-                      }`}
-                    >
-                      {section.display_name}
-                    </Button>
-                  ))}
-                </div>
+            <div className="bg-green-50 rounded-lg p-4">
+              <h4 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
+                <Home size={16} />
+                Navigation
+              </h4>
+              <div className="space-y-2">
+                {navigationData?.all_sections?.map((section: any) => (
+                  <Button
+                    key={section.id}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/timetable/${section.id}`)}
+                    className={`w-full text-left justify-start ${
+                      section.id === parseInt(sectionId || '0') ? 'bg-green-100 border-green-400' : ''
+                    }`}
+                  >
+                    {section.display_name}
+                  </Button>
+                ))}
               </div>
             </div>
           </div>
@@ -384,7 +270,6 @@ export default function TimetableView() {
 
         {/* Main Content */}
         <div className="flex-1 p-8">
-          {/* Timetable Card */}
           <Card className="shadow-xl rounded-xl bg-white/90 border-2 border-blue-200">
             <div className="p-6">
               {loading ? (
@@ -393,12 +278,10 @@ export default function TimetableView() {
                 <div className="text-center py-10 text-red-600 font-semibold">{error}</div>
               ) : (
                 <div className="overflow-auto">
-                  <table className="w-full border border-gray-300 rounded-lg overflow-hidden">
+                  <table className="w-full border border-gray-300">
                     <thead>
                       <tr className="bg-blue-100">
-                        <th className="border px-4 py-3 text-blue-700 font-semibold min-w-[120px]">
-                          Day / Period
-                        </th>
+                        <th className="border px-4 py-3 text-blue-700 font-semibold min-w-[120px]">Day</th>
                         {periods.map((period) => (
                           <th key={period} className="border px-4 py-3 text-purple-700 font-semibold min-w-[150px]">
                             Period {period}
@@ -408,30 +291,20 @@ export default function TimetableView() {
                     </thead>
                     <tbody>
                       {days.map((day) => (
-                        <tr key={day} className="hover:bg-blue-50 transition">
-                          <td className="border px-4 py-4 font-bold text-blue-600 bg-blue-50">
-                            {day}
-                          </td>
+                        <tr key={day} className="hover:bg-blue-50">
+                          <td className="border px-4 py-4 font-bold text-blue-600 bg-blue-50">{day}</td>
                           {periods.map((period) => {
-                            const session = timetable.find(
-                              (s: any) => s.day === day && String(s.period) === String(period)
-                            );
+                            const session = timetable.find((s: any) => s.day === day && String(s.period) === String(period));
                             return (
                               <td key={period} className="border px-4 py-4 text-sm">
                                 {session ? (
                                   <div className="space-y-1">
-                                    <div className="font-semibold text-purple-700 text-center">
-                                      {session.subject}
-                                    </div>
-                                    <div className="text-green-700 text-center">
-                                      {session.faculty}
-                                    </div>
-                                    <div className="text-xs text-pink-600 text-center">
-                                      📍 {session.room}
-                                    </div>
+                                    <div className="font-semibold text-purple-700">{session.subject}</div>
+                                    <div className="text-green-700">{session.faculty}</div>
+                                    <div className="text-xs text-red-600">📍 {session.room}</div>
                                   </div>
                                 ) : (
-                                  <div className="text-gray-400 text-center py-4">-</div>
+                                  <span className="text-gray-400">-</span>
                                 )}
                               </td>
                             );
@@ -445,19 +318,14 @@ export default function TimetableView() {
             </div>
           </Card>
 
-          {/* JSON Data Preview */}
           <div className="mt-6 flex justify-end">
-            <Button
-              variant="outline"
-              className="border-blue-400 text-blue-700"
-              onClick={() => setShowJson((v) => !v)}
-            >
+            <Button variant="outline" className="border-blue-400 text-blue-700" onClick={() => setShowJson((v) => !v)}>
               {showJson ? "Hide Raw JSON" : "Show Raw JSON"}
             </Button>
           </div>
           {showJson && timetableData && (
-            <div className="mt-4 bg-gray-900 rounded-lg p-4 text-xs text-green-200 shadow-lg">
-              <pre className="overflow-auto max-h-96">{JSON.stringify(timetableData, null, 2)}</pre>
+            <div className="mt-4 bg-gray-900 rounded-lg p-4 text-xs text-green-200 shadow-lg max-h-96 overflow-auto">
+              <pre>{JSON.stringify(timetableData, null, 2)}</pre>
             </div>
           )}
         </div>
