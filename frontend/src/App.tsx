@@ -6,6 +6,10 @@ import Dashboard from "./pages/Dashboard";
 import SetupWizard from "./pages/SetupWizard";
 import TimetableView from "./pages/TimetableView";
 import TimetableList from "./pages/TimetableList";
+import FacultyTimetableView from "@/pages/FacultyTimetableView";
+import MasterTimetableView from "@/pages/MasterTimetableView";
+import InteractiveTimetableView from "@/pages/InteractiveTimetableView";
+import Flowchart from "./pages/Flowchart";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -56,6 +60,22 @@ function App() {
         <Route 
           path="/timetable/:sectionId" 
           element={isAuthenticated ? <TimetableView /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/faculty-timetable/:facultyId" 
+          element={isAuthenticated ? <FacultyTimetableView /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/master-timetable" 
+          element={isAuthenticated ? <MasterTimetableView /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/interactive-timetable/:sectionId" 
+          element={isAuthenticated ? <InteractiveTimetableView /> : <Navigate to="/login" />} 
+        />
+        <Route 
+          path="/algorithm-flowchart" 
+          element={isAuthenticated ? <Flowchart /> : <Navigate to="/login" />} 
         />
 
         {/* Default Route */}

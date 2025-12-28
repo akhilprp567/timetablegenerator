@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Building2, BookOpen, Users, Home, CheckCircle2, Info, CalendarDays, Loader2, Plus, Trash2, AlertCircle } from "lucide-react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { getSubjectsByCourse, VTU_SUBJECTS } from "@/constants/vtuSubjects";
 
 const steps = [
 	{ value: "step1", label: "Institute", icon: <Building2 size={18} className="text-blue-500" /> },
@@ -37,7 +36,12 @@ export default function SetupWizard() {
 			{
 				semester: 1,
 				sections: [""],
-				subjects: [{ name: "", faculty: "", weeklyHours: 3, isLab: false, labHours: 0 }],
+				subjects: [{ 
+					name: "", 
+					facultyAssignments: [{ faculty: "", hoursPerWeek: 3 }], 
+					weeklyHours: 3, 
+					isLab: false 
+				}],
 			},
 		],
 	});
@@ -57,7 +61,12 @@ export default function SetupWizard() {
 				{
 					semester: nextSemester,
 					sections: [""],
-					subjects: [{ name: "", faculty: "", weeklyHours: 3, isLab: false, labHours: 0 }],
+					subjects: [{ 
+						name: "", 
+						facultyAssignments: [{ faculty: "", hoursPerWeek: 3 }], 
+						weeklyHours: 3, 
+						isLab: false 
+					}],
 				},
 			],
 		});
@@ -134,24 +143,96 @@ export default function SetupWizard() {
 	const handleSaveInstituteSetup = async () => {
 		try {
 			setLoading(true);
-			const token = localStorage.getItem("token");
-			await axios.post(
-				"http://127.0.0.1:8000/timetable/setup/institute/",
-				{
-					institute: formData.institute,
-					rooms: formData.rooms,
-					faculties: formData.faculties
+			setErrorDetails(null);
+			
+			// Enhanced validation before sending
+			if (!formData.institute.name.trim()) {
+				throw new Error("Institution name is required");
+			}
+			if (!formData.institute.academicYear.trim()) {
+				throw new Error("Academic year is required");
+			}
+			if (!formData.institute.course.trim()) {
+				throw new Error("Course is required");
+			}
+			if (formData.institute.workingDays < 1 || formData.institute.workingDays > 7) {
+				throw new Error("Working days must be between 1 and 7");
+			}
+			if (formData.institute.periodsPerDay < 1 || formData.institute.periodsPerDay > 10) {
+				throw new Error("Periods per day must be between 1 and 10");
+			}
+			
+			// Validate faculties
+			const validFaculties = formData.faculties.filter(f => 
+				f.name.trim() && f.empId.trim() && f.maxHours > 0
+			);
+			if (validFaculties.length === 0) {
+				throw new Error("At least one valid faculty member is required");
+			}
+			
+			// Validate rooms
+			const validRooms = formData.rooms.filter(r => r.name.trim());
+			if (validRooms.length === 0) {
+				throw new Error("At least one valid room is required");
+			}
+			
+			const payload = {
+				institute: {
+					name: formData.institute.name.trim(),
+					academicYear: formData.institute.academicYear.trim(),
+					course: formData.institute.course.trim(),
+					workingDays: formData.institute.workingDays,
+					periodsPerDay: formData.institute.periodsPerDay,
+					periodDuration: formData.institute.periodDuration
 				},
+				rooms: validRooms.map(r => ({
+					name: r.name.trim(),
+					isLab: r.isLab
+				})),
+				faculties: validFaculties.map(f => ({
+					name: f.name.trim(),
+					empId: f.empId.trim(),
+					maxHours: f.maxHours
+				}))
+			};
+			
+			console.log("Sending institute setup payload:", payload);
+			
+			const token = localStorage.getItem("token");
+			
+			// Try different URL formats
+			const baseURL = 'http://127.0.0.1:8000'; // or try 'http://localhost:8000'
+			
+			const response = await axios.post(
+				`${baseURL}/timetable/setup/institute/`,
+				payload,
 				{
-					headers: { 'Authorization': token ? `Token ${token}` : '' }
+					headers: { 
+						'Authorization': token ? `Token ${token}` : '',
+						'Content-Type': 'application/json'
+					},
+					timeout: 30000 // 30 second timeout
 				}
 			);
+			
+			console.log("Institute setup response:", response.data);
 			alert("Institute setup saved successfully! You can now generate timetables with just academic setup.");
 			setSetupMode("academic_only");
 			setStep("step4");
 		} catch (error: any) {
 			console.error("Error saving institute setup:", error);
-			alert("Failed to save institute setup: " + (error.response?.data?.error || error.message));
+			let errorMsg = "Failed to save institute setup";
+			
+			if (error.code === 'ERR_NETWORK') {
+				errorMsg = "Cannot connect to server. Please check if the backend server is running on http://127.0.0.1:8000";
+			} else if (error.response?.data?.error) {
+				errorMsg = error.response.data.error;
+			} else if (error.message) {
+				errorMsg = error.message;
+			}
+			
+			setErrorDetails(errorMsg);
+			alert(errorMsg);
 		} finally {
 			setLoading(false);
 		}
@@ -244,8 +325,27 @@ export default function SetupWizard() {
 				if (!subj.name || !subj.name.trim()) {
 					return `Semester ${sem.semester}: Subject ${j + 1} name is required`;
 				}
-				if (!subj.faculty || !subj.faculty.trim()) {
+				
+				// Validate faculty assignments
+				if (!subj.facultyAssignments || subj.facultyAssignments.length === 0) {
 					return `Semester ${sem.semester}: Faculty assignment is required for subject "${subj.name}"`;
+				}
+				
+				// Check if all faculty assignments are valid
+				let totalAssignedHours = 0;
+				for (const assignment of subj.facultyAssignments) {
+					if (!assignment.faculty || !assignment.faculty.trim()) {
+						return `Semester ${sem.semester}: Faculty must be selected for subject "${subj.name}"`;
+					}
+					if (!assignment.hoursPerWeek || assignment.hoursPerWeek < 1) {
+						return `Semester ${sem.semester}: Faculty hours must be at least 1 for subject "${subj.name}"`;
+					}
+					totalAssignedHours += assignment.hoursPerWeek;
+				}
+				
+				// Check if total assigned hours match weekly hours
+				if (totalAssignedHours !== subj.weeklyHours) {
+					return `Semester ${sem.semester}: Total faculty hours (${totalAssignedHours}) must equal subject weekly hours (${subj.weeklyHours}) for "${subj.name}"`;
 				}
 			}
 		}
@@ -630,6 +730,18 @@ export default function SetupWizard() {
 									<p className="text-gray-600 mb-6">
 										Configure your academic structure with semesters, sections, and subjects.
 									</p>
+									<div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+										<h4 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+											<BookOpen size={18} />
+											Subject Configuration Guide
+										</h4>
+										<ul className="text-blue-700 text-sm space-y-1">
+											<li>• <strong>Theory Subjects:</strong> Regular classroom subjects (3-5 classes per week typical)</li>
+											<li>• <strong>Lab Subjects:</strong> Practical subjects requiring lab rooms (2-3 classes per week typical)</li>
+											<li>• <strong>Classes per Week:</strong> Total number of periods allocated for each subject</li>
+											<li>• <strong>Faculty Hours:</strong> System will validate against faculty weekly hour limits</li>
+										</ul>
+									</div>
 								</div>
 
 								<div className="flex gap-4 mb-4">
@@ -650,123 +762,425 @@ export default function SetupWizard() {
 										</Button>
 									)}
 								</div>
+
 								{formData.academics.map((sem, semIdx) => (
-									<div key={semIdx} className="border p-3 rounded mb-4 bg-pink-50">
-										<div className="flex justify-between items-center mb-2">
-											<h4 className="font-medium text-pink-700">Semester {sem.semester}</h4>
+									<div key={semIdx} className="border-2 border-pink-200 p-6 rounded-lg mb-6 bg-pink-50">
+										<div className="flex justify-between items-center mb-4">
+											<h4 className="font-semibold text-pink-700 text-lg">Semester {sem.semester}</h4>
 											{formData.academics.length > 1 && (
 												<Button
-													variant="ghost"
-													className="text-red-500"
+													variant="outline"
+													className="text-red-500 border-red-300 hover:bg-red-50"
 													size="sm"
 													onClick={() => handleRemoveSemester(semIdx)}
 												>
-													Remove
+													<Trash2 size={16} className="mr-1" />
+													Remove Semester
 												</Button>
 											)}
 										</div>
-										<label className="block mb-1 font-medium text-gray-700">Sections</label>
-										{sem.sections.map((section, secIdx) => (
-											<input
-												key={secIdx}
-												placeholder={`Section Name ${secIdx + 1}`}
-												className="border p-2 rounded w-full mb-2"
-												value={section}
-												onChange={(e) => {
+
+										{/* Sections */}
+										<div className="mb-6">
+											<label className="block mb-3 font-semibold text-gray-700 flex items-center gap-2">
+												<Users size={18} />
+												Sections
+											</label>
+											<div className="space-y-2">
+												{sem.sections.map((section, secIdx) => (
+													<div key={secIdx} className="flex gap-2">
+														<input
+															placeholder={`Section ${String.fromCharCode(65 + secIdx)} (e.g., A, B, C)`}
+															className="flex-1 border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-pink-500"
+															value={section}
+															onChange={(e) => {
+																const academics = [...formData.academics];
+																academics[semIdx].sections[secIdx] = e.target.value;
+																setFormData({ ...formData, academics });
+															}}
+														/>
+														{sem.sections.length > 1 && (
+															<Button
+																variant="outline"
+																size="sm"
+																onClick={() => {
+																	const academics = [...formData.academics];
+																	academics[semIdx].sections.splice(secIdx, 1);
+																	setFormData({ ...formData, academics });
+																}}
+																className="text-red-600 border-red-300"
+															>
+																<Trash2 size={16} />
+															</Button>
+														)}
+													</div>
+												))}
+											</div>
+											<Button
+												variant="outline"
+												className="mt-2 border-pink-300 text-pink-700 hover:bg-pink-50"
+												onClick={() => {
 													const academics = [...formData.academics];
-													academics[semIdx].sections[secIdx] = e.target.value;
+													academics[semIdx].sections.push("");
 													setFormData({ ...formData, academics });
 												}}
-											/>
-										))}
-										<Button
-											variant="outline"
-											className="mt-2"
-											onClick={() => {
-												const academics = [...formData.academics];
-												academics[semIdx].sections.push("");
-												setFormData({ ...formData, academics });
-											}}
-										>
-											+ Add Section
-										</Button>
-										<label className="block mt-4 mb-1 font-medium text-gray-700">Subjects</label>
-										{sem.subjects.map((subj, subjIdx) => (
-											<div key={subjIdx} className="flex gap-2 mt-2">
-												<select
-													className="border p-2 rounded flex-1 focus:ring-2 focus:ring-pink-500"
-													value={subj.name}
-													onChange={(e) => {
-														const academics = [...formData.academics];
-														academics[semIdx].subjects[subjIdx].name = e.target.value;
-														setFormData({ ...formData, academics });
-													}}
-												>
-													<option value="">Select Subject</option>
-													{formData.institute.course ? (
-														(() => {
-															const subjects = getSubjectsByCourse(formData.institute.course);
-															return subjects.length > 0 ? (
-																subjects.map((subject, i) => (
-																	<option key={i} value={subject}>
-																		{subject}
-																	</option>
-																))
-															) : (
-																<option disabled>No subjects found for "{formData.institute.course}"</option>
-															);
-														})()
-													) : (
-														<option disabled>Please select a course first (Step 1)</option>
-													)}
-												</select>
-												<select
-													className="border p-2 rounded focus:ring-2 focus:ring-pink-500"
-													value={subj.faculty}
-													onChange={(e) => {
-														const academics = [...formData.academics];
-														academics[semIdx].subjects[subjIdx].faculty = e.target.value;
-														setFormData({ ...formData, academics });
-													}}
-												>
-													<option value="">Select Faculty</option>
-													{formData.faculties.map((f, i) => (
-														<option key={i} value={f.name}>
-															{f.name}
-														</option>
-													))}
-												</select>
-												<Button
-													variant="outline"
-													size="sm"
-													onClick={() => {
-														const academics = [...formData.academics];
-														academics[semIdx].subjects.splice(subjIdx, 1);
-														setFormData({ ...formData, academics });
-													}}
-													className="text-red-600 border-red-300 hover:bg-red-50"
-												>
-													<Trash2 size={16} />
-												</Button>
+											>
+												<Plus size={16} className="mr-2" />
+												Add Section
+											</Button>
+										</div>
+
+										{/* Subjects */}
+										<div>
+											<label className="block mb-3 font-semibold text-gray-700 flex items-center gap-2">
+												<BookOpen size={18} />
+												Subjects & Faculty Assignment
+											</label>
+											<div className="space-y-4">
+												{sem.subjects.map((subj, subjIdx) => (
+													<div key={subjIdx} className="p-4 bg-white rounded-lg border-2 border-gray-200">
+														{/* Subject Header */}
+														<div className="grid grid-cols-1 md:grid-cols-8 gap-3 mb-4">
+															{/* Subject Name */}
+															<div className="md:col-span-3">
+																<label className="block text-xs font-medium text-gray-600 mb-1">Subject Name</label>
+																<input
+																	placeholder="e.g., Operating Systems, Database Lab"
+																	className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-pink-500"
+																	value={subj.name}
+																	onChange={(e) => {
+																		const academics = [...formData.academics];
+																		academics[semIdx].subjects[subjIdx].name = e.target.value;
+																		setFormData({ ...formData, academics });
+																	}}
+																/>
+															</div>
+
+															{/* Total Weekly Hours */}
+															<div className="md:col-span-2">
+																<label className="block text-xs font-medium text-gray-600 mb-1">Total Classes/Week</label>
+																<input
+																	type="number"
+																	min="1"
+																	max="10"
+																	placeholder="6"
+																	className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-pink-500"
+																	value={subj.weeklyHours}
+																	onChange={(e) => {
+																		const academics = [...formData.academics];
+																		const newWeeklyHours = parseInt(e.target.value) || 1;
+																		academics[semIdx].subjects[subjIdx].weeklyHours = newWeeklyHours;
+																		
+																		// Auto-adjust first faculty assignment if it exceeds total hours
+																		if (academics[semIdx].subjects[subjIdx].facultyAssignments.length > 0) {
+																			const currentFirstAssignment = academics[semIdx].subjects[subjIdx].facultyAssignments[0].hoursPerWeek;
+																			if (currentFirstAssignment > newWeeklyHours) {
+																				academics[semIdx].subjects[subjIdx].facultyAssignments[0].hoursPerWeek = newWeeklyHours;
+																			}
+																		}
+																		
+																		setFormData({ ...formData, academics });
+																	}}
+																/>
+															</div>
+
+															{/* Lab/Theory Toggle */}
+															<div className="md:col-span-2">
+																<label className="block text-xs font-medium text-gray-600 mb-1">Subject Type</label>
+																<div className="flex items-center gap-2 p-2">
+																	<input
+																		type="checkbox"
+																		id={`lab-${semIdx}-${subjIdx}`}
+																		className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+																		checked={subj.isLab}
+																		onChange={(e) => {
+																			const academics = [...formData.academics];
+																			academics[semIdx].subjects[subjIdx].isLab = e.target.checked;
+																			setFormData({ ...formData, academics });
+																		}}
+																	/>
+																	<label 
+																		htmlFor={`lab-${semIdx}-${subjIdx}`} 
+																		className={`text-sm font-medium ${subj.isLab ? 'text-purple-700' : 'text-gray-600'}`}
+																	>
+																		{subj.isLab ? '🔬 Lab' : '📚 Theory'}
+																	</label>
+																</div>
+															</div>
+
+															{/* Actions */}
+															<div className="md:col-span-1 flex items-end">
+																<Button
+																	variant="outline"
+																	size="sm"
+																	onClick={() => {
+																		const academics = [...formData.academics];
+																		academics[semIdx].subjects.splice(subjIdx, 1);
+																		setFormData({ ...formData, academics });
+																	}}
+																	disabled={sem.subjects.length <= 1}
+																	className="text-red-600 border-red-300 hover:bg-red-50 w-full"
+																>
+																	<Trash2 size={16} />
+																</Button>
+															</div>
+														</div>
+
+														{/* Faculty Assignments */}
+														<div className="border-t border-gray-200 pt-4">
+															<div className="flex items-center justify-between mb-3">
+																<h6 className="font-medium text-gray-700 flex items-center gap-2">
+																	<Users size={16} />
+																	Faculty Assignments
+																	<span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+																		{subj.facultyAssignments.reduce((sum, fa) => sum + (fa.hoursPerWeek || 0), 0)}/{subj.weeklyHours} hours assigned
+																	</span>
+																</h6>
+																<Button
+																	variant="outline"
+																	size="sm"
+																	onClick={() => {
+																		const academics = [...formData.academics];
+																		const remainingHours = subj.weeklyHours - subj.facultyAssignments.reduce((sum, fa) => sum + (fa.hoursPerWeek || 0), 0);
+																		academics[semIdx].subjects[subjIdx].facultyAssignments.push({
+																			faculty: "",
+																			hoursPerWeek: Math.max(1, remainingHours)
+																		});
+																		setFormData({ ...formData, academics });
+																	}}
+																	className="text-green-600 border-green-300 hover:bg-green-50"
+																>
+																	<Plus size={14} className="mr-1" />
+																	Add Faculty
+																</Button>
+															</div>
+
+															<div className="space-y-3">
+																{subj.facultyAssignments.map((assignment, assignIdx) => {
+																	const totalAssignedHours = subj.facultyAssignments.reduce((sum, fa, idx) => 
+																		idx !== assignIdx ? sum + (fa.hoursPerWeek || 0) : sum, 0
+																	);
+																	const maxHoursForThis = subj.weeklyHours - totalAssignedHours;
+
+																	return (
+																		<div key={assignIdx} className="grid grid-cols-1 md:grid-cols-5 gap-3 p-3 bg-gray-50 rounded border">
+																			{/* Faculty Selection */}
+																			<div className="md:col-span-2">
+																				<label className="block text-xs font-medium text-gray-600 mb-1">Faculty</label>
+																				<select
+																					className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-pink-500"
+																					value={assignment.faculty}
+																					onChange={(e) => {
+																						const academics = [...formData.academics];
+																						academics[semIdx].subjects[subjIdx].facultyAssignments[assignIdx].faculty = e.target.value;
+																						setFormData({ ...formData, academics });
+																					}}
+																				>
+																					<option value="">Select Faculty</option>
+																					{formData.faculties.map((f, i) => (
+																						<option key={i} value={f.name}>
+																							{f.name} ({f.maxHours}h/week available)
+																						</option>
+																					))}
+																				</select>
+																			</div>
+
+																			{/* Hours Assignment */}
+																			<div className="md:col-span-2">
+																				<label className="block text-xs font-medium text-gray-600 mb-1">
+																					Hours/Week (max: {maxHoursForThis})
+																				</label>
+																				<input
+																					type="number"
+																					min="1"
+																					max={maxHoursForThis}
+																					className="w-full border border-gray-300 p-2 rounded focus:ring-2 focus:ring-pink-500"
+																					value={assignment.hoursPerWeek}
+																					onChange={(e) => {
+																						const academics = [...formData.academics];
+																						const newHours = Math.min(
+																							parseInt(e.target.value) || 1,
+																							maxHoursForThis
+																						);
+																						academics[semIdx].subjects[subjIdx].facultyAssignments[assignIdx].hoursPerWeek = newHours;
+																						setFormData({ ...formData, academics });
+																					}}
+																				/>
+																			</div>
+
+																			{/* Remove Assignment */}
+																			<div className="md:col-span-1 flex items-end">
+																				<Button
+																					variant="outline"
+																					size="sm"
+																					onClick={() => {
+																						const academics = [...formData.academics];
+																						academics[semIdx].subjects[subjIdx].facultyAssignments.splice(assignIdx, 1);
+																						setFormData({ ...formData, academics });
+																					}}
+																					disabled={subj.facultyAssignments.length <= 1}
+																					className="text-red-600 border-red-300 hover:bg-red-50 w-full"
+																				>
+																					<Trash2 size={14} />
+																				</Button>
+																			</div>
+																		</div>
+																	);
+																})}
+															</div>
+
+															{/* Assignment Validation */}
+															{(() => {
+																const totalAssigned = subj.facultyAssignments.reduce((sum, fa) => sum + (fa.hoursPerWeek || 0), 0);
+																const isUnderAssigned = totalAssigned < subj.weeklyHours;
+																const isOverAssigned = totalAssigned > subj.weeklyHours;
+
+																return (
+																	<div className="mt-3">
+																		{isOverAssigned && (
+																			<div className="flex items-center gap-2 text-red-600 text-sm">
+																				<AlertCircle size={16} />
+																				Over-assigned by {totalAssigned - subj.weeklyHours} hours
+																			</div>
+																		)}
+																		{isUnderAssigned && (
+																			<div className="flex items-center gap-2 text-orange-600 text-sm">
+																				<AlertCircle size={16} />
+																				Under-assigned by {subj.weeklyHours - totalAssigned} hours
+																			</div>
+																		)}
+																		{!isOverAssigned && !isUnderAssigned && totalAssigned > 0 && (
+																			<div className="flex items-center gap-2 text-green-600 text-sm">
+																				<CheckCircle2 size={16} />
+																				Perfectly assigned ({totalAssigned} hours)
+																			</div>
+																		)}
+																	</div>
+																);
+															})()}
+														</div>
+
+														{/* Lab Subject Info */}
+														{subj.isLab && (
+															<div className="mt-4 p-3 bg-purple-50 rounded border border-purple-200">
+																<p className="text-xs text-purple-700">
+																	🔬 <strong>Lab Subject:</strong> Will be scheduled in lab rooms. 
+																	Multiple faculty can handle different lab batches or theory+lab portions.
+																</p>
+															</div>
+														)}
+													</div>
+												))}
 											</div>
-										))}
-										<Button
-											variant="outline"
-											className="mt-2"
-											onClick={() => {
-												const academics = [...formData.academics];
-												academics[semIdx].subjects.push({ name: "", faculty: "", weeklyHours: 3, isLab: false, labHours: 0 });
-												setFormData({ ...formData, academics });
-											}}
-										>
-											+ Add Subject
-										</Button>
+
+											<Button
+												variant="outline"
+												className="mt-3 border-pink-300 text-pink-700 hover:bg-pink-50"
+												onClick={() => {
+													const academics = [...formData.academics];
+													academics[semIdx].subjects.push({ 
+														name: "", 
+														facultyAssignments: [{ faculty: "", hoursPerWeek: 3 }],
+														weeklyHours: 3, 
+														isLab: false 
+													});
+													setFormData({ ...formData, academics });
+												}}
+											>
+												<Plus size={16} className="mr-2" />
+												Add Subject
+											</Button>
+										</div>
+
+										{/* Semester Summary */}
+										<div className="mt-4 p-3 bg-gray-50 rounded-lg">
+											<h5 className="font-medium text-gray-800 mb-2">Semester Summary</h5>
+											<div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+												<div>
+													<span className="text-gray-600">Sections:</span>
+													<p className="font-medium">{sem.sections.filter(s => s.trim()).length}</p>
+												</div>
+												<div>
+													<span className="text-gray-600">Theory Subjects:</span>
+													<p className="font-medium">{sem.subjects.filter(s => !s.isLab).length}</p>
+												</div>
+												<div>
+													<span className="text-gray-600">Lab Subjects:</span>
+													<p className="font-medium">{sem.subjects.filter(s => s.isLab).length}</p>
+												</div>
+												<div>
+													<span className="text-gray-600">Total Classes/Week:</span>
+													<p className="font-medium">{sem.subjects.reduce((sum, s) => sum + (s.weeklyHours || 0), 0)} × {sem.sections.filter(s => s.trim()).length} sections</p>
+												</div>
+											</div>
+										</div>
 									</div>
 								))}
+
+								{/* Faculty Hours Validation */}
+								<div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+									<h4 className="font-semibold text-yellow-800 mb-2 flex items-center gap-2">
+										<AlertCircle size={18} />
+										Faculty Workload Analysis
+									</h4>
+									<div className="space-y-2">
+										{formData.faculties.map((faculty, idx) => {
+											const assignedHours = formData.academics.reduce((total, sem) => {
+												const sectionsCount = sem.sections.filter(s => s.trim()).length;
+												return total + sem.subjects.reduce((subTotal, subj) => {
+													const facultyAssignment = subj.facultyAssignments.find(fa => fa.faculty === faculty.name);
+													return subTotal + (facultyAssignment ? (facultyAssignment.hoursPerWeek || 0) * sectionsCount : 0);
+												}, 0);
+											}, 0);
+											const isOverloaded = assignedHours > faculty.maxHours;
+											const utilizationRate = faculty.maxHours > 0 ? (assignedHours / faculty.maxHours) * 100 : 0;
+
+											return (
+												<div key={idx} className={`flex items-center justify-between p-3 rounded ${
+													isOverloaded ? 'bg-red-100 text-red-800 border border-red-300' : 
+													utilizationRate > 80 ? 'bg-orange-100 text-orange-800 border border-orange-300' : 
+													'bg-green-100 text-green-800 border border-green-300'
+												}`}>
+													<div>
+														<span className="font-medium">{faculty.name}</span>
+														<div className="text-xs opacity-75">
+															Subjects: {formData.academics.reduce((count, sem) => 
+																count + sem.subjects.filter(subj => 
+																	subj.facultyAssignments.some(fa => fa.faculty === faculty.name)
+																).length, 0
+															)}
+														</div>
+													</div>
+													<div className="text-right">
+														<div className="text-sm">
+															{assignedHours}/{faculty.maxHours} hours 
+															({utilizationRate.toFixed(1)}%)
+														</div>
+														{isOverloaded && (
+															<div className="text-xs font-bold">⚠️ OVERLOADED by {assignedHours - faculty.maxHours}h</div>
+														)}
+													</div>
+												</div>
+											);
+										})}
+									</div>
+									
+									{/* Smart Suggestions */}
+									<div className="mt-4 p-3 bg-blue-50 rounded border border-blue-200">
+										<h5 className="font-medium text-blue-800 mb-2">💡 Smart Load Balancing Tips:</h5>
+										<ul className="text-blue-700 text-sm space-y-1">
+											<li>• Assign multiple faculty to high-hour subjects (6+ hours/week)</li>
+											<li>• Balance theory and lab portions among different faculty</li>
+											<li>• Use senior faculty for advanced topics, junior for basics</li>
+											<li>• Consider faculty expertise when distributing hours</li>
+										</ul>
+									</div>
+								</div>
+
 								<div className="mt-8 flex justify-between">
 									<Button
 										variant="secondary"
-										onClick={() => setStep("step3")}
+										onClick={() => setStep(setupMode === "academic_only" ? "step5" : "step3")}
 									>
 										Back
 									</Button>
@@ -774,7 +1188,7 @@ export default function SetupWizard() {
 										className="bg-gradient-to-r from-pink-500 to-blue-500 text-white shadow"
 										onClick={() => setStep("step5")}
 									>
-										Next
+										Next: Review
 									</Button>
 								</div>
 							</TabsContent>
@@ -785,112 +1199,143 @@ export default function SetupWizard() {
 									<CheckCircle2 size={22} /> Review & Generate
 								</h3>
 								<p className="text-sm text-gray-500 mb-6">
-									Review your inputs below. Please verify before generating the timetable.
+									Review your inputs below. Please verify faculty assignments and hour distributions before generating the timetable.
 								</p>
 								<div className="grid gap-8">
 									{/* Institute Info */}
-									<div className="bg-blue-50 rounded-lg p-4">
-										<h4 className="font-semibold text-blue-700 mb-2">Institute Info</h4>
-										<table className="w-full text-sm">
-											<tbody>
-												<tr>
-													<td className="font-medium">Name</td>
-													<td>{formData.institute.name}</td>
-												</tr>
-												<tr>
-													<td className="font-medium">Academic Year</td>
-													<td>{formData.institute.academicYear}</td>
-												</tr>
-												<tr>
-													<td className="font-medium">Course</td>
-													<td>{formData.institute.course}</td>
-												</tr>
-												<tr>
-													<td className="font-medium">Total Semesters</td>
-													<td>{formData.institute.totalSemesters}</td>
-												</tr>
-												<tr>
-													<td className="font-medium">Working Days</td>
-													<td>{formData.institute.workingDays}</td>
-												</tr>
-												<tr>
-													<td className="font-medium">Periods/Day</td>
-													<td>{formData.institute.periodsPerDay}</td>
-												</tr>
-												<tr>
-													<td className="font-medium">Period Duration</td>
-													<td>{formData.institute.periodDuration} mins</td>
-												</tr>
-											</tbody>
-										</table>
-									</div>
-									{/* Rooms Info */}
-									<div className="bg-purple-50 rounded-lg p-4">
-										<h4 className="font-semibold text-purple-700 mb-2">Rooms & Labs</h4>
-										<table className="w-full text-sm">
-											<thead>
-												<tr>
-													<th>Name</th>
-													<th>Lab?</th>
-												</tr>
-											</thead>
-											<tbody>
-												{formData.rooms.map((room, idx) => (
-													<tr key={idx}>
-														<td>{room.name}</td>
-														<td>{room.isLab ? "Yes" : "No"}</td>
-													</tr>
-												))}
-											</tbody>
-										</table>
-									</div>
-									{/* Faculty Info */}
-									<div className="bg-green-50 rounded-lg p-4">
-										<h4 className="font-semibold text-green-700 mb-2">Faculty</h4>
-										<table className="w-full text-sm">
-											<thead>
-												<tr>
-													<th>Name</th>
-													<th>Employee ID</th>
-												</tr>
-											</thead>
-											<tbody>
-												{formData.faculties.map((faculty, idx) => (
-													<tr key={idx}>
-														<td>{faculty.name}</td>
-														<td>{faculty.empId}</td>
-													</tr>
-												))}
-											</tbody>
-										</table>
-									</div>
+									{setupMode === "first_time" && (
+										<>
+											<div className="bg-blue-50 rounded-lg p-4">
+												<h4 className="font-semibold text-blue-700 mb-2">Institute Info</h4>
+												<div className="grid grid-cols-2 gap-4 text-sm">
+													<div><span className="font-medium">Name:</span> {formData.institute.name}</div>
+													<div><span className="font-medium">Academic Year:</span> {formData.institute.academicYear}</div>
+													<div><span className="font-medium">Course:</span> {formData.institute.course}</div>
+													<div><span className="font-medium">Total Semesters:</span> {formData.institute.totalSemesters}</div>
+													<div><span className="font-medium">Working Days:</span> {formData.institute.workingDays}</div>
+													<div><span className="font-medium">Periods/Day:</span> {formData.institute.periodsPerDay}</div>
+												</div>
+											</div>
+
+											{/* Rooms Info */}
+											<div className="bg-purple-50 rounded-lg p-4">
+												<h4 className="font-semibold text-purple-700 mb-2">Rooms & Labs</h4>
+												<div className="grid grid-cols-2 gap-2 text-sm">
+													{formData.rooms.map((room, idx) => (
+														<div key={idx} className="flex items-center gap-2">
+															<span>{room.isLab ? '🔬' : '🏫'}</span>
+															<span>{room.name} ({room.isLab ? 'Lab' : 'Classroom'})</span>
+														</div>
+													))}
+												</div>
+											</div>
+
+											{/* Faculty Info */}
+											<div className="bg-green-50 rounded-lg p-4">
+												<h4 className="font-semibold text-green-700 mb-2">Faculty</h4>
+												<div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+													{formData.faculties.map((faculty, idx) => (
+														<div key={idx} className="flex items-center justify-between p-2 bg-white rounded">
+															<span>{faculty.name} ({faculty.empId})</span>
+															<span className="font-medium">{faculty.maxHours} hrs/week</span>
+														</div>
+													))}
+												</div>
+											</div>
+										</>
+									)}
+
 									{/* Academic Info */}
 									<div className="bg-pink-50 rounded-lg p-4">
 										<h4 className="font-semibold text-pink-700 mb-2">Academic Setup</h4>
 										{formData.academics.map((sem, semIdx) => (
-											<div key={semIdx} className="mb-4">
-												<div className="font-medium text-pink-700 mb-1">Semester {sem.semester}</div>
-												<div className="mb-2">
-													<span className="font-medium">Sections:</span> {sem.sections.join(", ")}
+											<div key={semIdx} className="mb-6 p-4 bg-white rounded border">
+												<div className="font-medium text-pink-700 mb-3 text-lg">Semester {sem.semester}</div>
+												
+												{/* Sections */}
+												<div className="mb-4">
+													<span className="font-medium text-gray-700">Sections:</span> 
+													<span className="ml-2">{sem.sections.filter(s => s.trim()).join(", ")}</span>
 												</div>
-												<table className="w-full text-sm">
-													<thead>
-														<tr>
-															<th>Subject</th>
-															<th>Faculty</th>
-														</tr>
-													</thead>
-													<tbody>
-														{sem.subjects.map((subj, subjIdx) => (
-															<tr key={subjIdx}>
-																<td>{subj.name}</td>
-																<td>{subj.faculty}</td>
+
+												{/* Subjects Table */}
+												<div className="overflow-x-auto">
+													<table className="w-full text-sm border border-gray-200 rounded">
+														<thead className="bg-gray-100">
+															<tr>
+																<th className="p-2 border text-left">Subject</th>
+																<th className="p-2 border text-left">Faculty Assignments</th>
+																<th className="p-2 border text-center">Type</th>
+																<th className="p-2 border text-center">Total Hours</th>
+																<th className="p-2 border text-center">Per Section</th>
 															</tr>
-														))}
-													</tbody>
-												</table>
+														</thead>
+														<tbody>
+															{sem.subjects.map((subj, subjIdx) => {
+																const sectionsCount = sem.sections.filter(s => s.trim()).length;
+																
+																return (
+																	<tr key={subjIdx}>
+																		<td className="p-2 border font-medium">{subj.name}</td>
+																		<td className="p-2 border">
+																			<div className="space-y-1">
+																				{subj.facultyAssignments.map((assignment, idx) => (
+																					<div key={idx} className="text-xs">
+																						<span className="font-medium text-blue-700">{assignment.faculty}</span>
+																						<span className="text-gray-600 ml-1">({assignment.hoursPerWeek}h)</span>
+																					</div>
+																				))}
+																			</div>
+																		</td>
+																		<td className="p-2 border text-center">
+																			{subj.isLab ? '🔬 Lab' : '📚 Theory'}
+																		</td>
+																		<td className="p-2 border text-center font-medium">
+																			{subj.weeklyHours} hours
+																		</td>
+																		<td className="p-2 border text-center font-medium">
+																			{subj.weeklyHours * sectionsCount} 
+																			<span className="text-xs text-gray-500 block">
+																				({sectionsCount} sections)
+																			</span>
+																		</td>
+																	</tr>
+																);
+															})}
+														</tbody>
+													</table>
+												</div>
 											</div>
 										))}
+									</div>
+
+									{/* Final Summary */}
+									<div className="bg-indigo-50 rounded-lg p-4">
+										<h4 className="font-semibold text-indigo-700 mb-2">Generation Summary</h4>
+										<div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+											<div>
+												<span className="text-gray-600">Total Semesters:</span>
+												<p className="font-bold text-indigo-800">{formData.academics.length}</p>
+											</div>
+											<div>
+												<span className="text-gray-600">Total Sections:</span>
+												<p className="font-bold text-indigo-800">
+													{formData.academics.reduce((sum, sem) => sum + sem.sections.filter(s => s.trim()).length, 0)}
+												</p>
+											</div>
+											<div>
+												<span className="text-gray-600">Theory Subjects:</span>
+												<p className="font-bold text-indigo-800">
+													{formData.academics.reduce((sum, sem) => sum + sem.subjects.filter(s => !s.isLab).length, 0)}
+												</p>
+											</div>
+											<div>
+												<span className="text-gray-600">Lab Subjects:</span>
+												<p className="font-bold text-indigo-800">
+													{formData.academics.reduce((sum, sem) => sum + sem.subjects.filter(s => s.isLab).length, 0)}
+												</p>
+											</div>
+										</div>
 									</div>
 								</div>
 

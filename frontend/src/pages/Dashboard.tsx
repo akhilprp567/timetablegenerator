@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarDays, Settings, Eye, LogOut, User, Building2, Clock, Users, BookOpen, CheckCircle, AlertCircle } from "lucide-react";
+import { CalendarDays, Settings, Eye, LogOut, User, Building2, Clock, Users, BookOpen, CheckCircle, AlertCircle, GitBranch } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import axios from "axios";
@@ -156,55 +156,150 @@ export default function Dashboard() {
         </div>
 
         {/* Action Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {/* Setup & Generate */}
-          <Card className="p-10 shadow-xl bg-white/90 border-2 border-blue-200 hover:shadow-2xl transition-all duration-300 group">
+          <Card className="p-8 shadow-xl bg-white/90 border-2 border-blue-200 hover:shadow-2xl transition-all duration-300 group">
             <div className="text-center">
-              <div className="bg-blue-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-blue-200 transition-colors">
-                <Settings size={40} className="text-blue-600" />
+              <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-blue-200 transition-colors">
+                <Settings size={32} className="text-blue-600" />
               </div>
-              <h3 className="text-2xl font-bold text-blue-800 mb-4">
+              <h3 className="text-xl font-bold text-blue-800 mb-3">
                 {setupStatus?.setup_complete ? "Generate New Timetable" : "Setup & Generate"}
               </h3>
-              <p className="text-gray-600 mb-8 text-lg leading-relaxed">
+              <p className="text-gray-600 mb-6 text-sm leading-relaxed">
                 {setupStatus?.setup_complete ? 
-                  "Create timetables for new academic periods using your existing institution setup. Faculty hour limits will be automatically enforced." :
-                  "Configure your institution settings, add faculty with their working hour limits, and set up rooms to get started."
+                  "Create timetables for new academic periods using your existing institution setup." :
+                  "Configure your institution settings, add faculty with their working hour limits, and set up rooms."
                 }
               </p>
               <Button
                 onClick={() => navigate("/setup")}
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-4 text-lg"
+                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3"
                 size="lg"
               >
-                <Settings size={22} className="mr-3" />
+                <Settings size={20} className="mr-2" />
                 {setupStatus?.setup_complete ? "Generate Timetable" : "Start Setup"}
               </Button>
             </div>
           </Card>
 
-          {/* View Generated Timetables */}
-          <Card className="p-10 shadow-xl bg-white/90 border-2 border-purple-200 hover:shadow-2xl transition-all duration-300 group">
+          {/* View Student Timetables */}
+          <Card className="p-8 shadow-xl bg-white/90 border-2 border-purple-200 hover:shadow-2xl transition-all duration-300 group">
             <div className="text-center">
-              <div className="bg-purple-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:bg-purple-200 transition-colors">
-                <Eye size={40} className="text-purple-600" />
+              <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-purple-200 transition-colors">
+                <Eye size={32} className="text-purple-600" />
               </div>
-              <h3 className="text-2xl font-bold text-purple-800 mb-4">View Generated Timetables</h3>
-              <p className="text-gray-600 mb-8 text-lg leading-relaxed">
-                Browse, view, and download your generated timetables. Each timetable respects faculty working hour limits and provides optimal distribution across the week.
+              <h3 className="text-xl font-bold text-purple-800 mb-3">Student Timetables</h3>
+              <p className="text-gray-600 mb-6 text-sm leading-relaxed">
+                Browse and download section-wise timetables for students. View class schedules by section and semester.
               </p>
               <Button
-                onClick={() => navigate("/timetables")}
-                className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-4 text-lg"
+                onClick={() => navigate("/timetables?type=student")}
+                className="w-full bg-gradient-to-r from-purple-500 to-purple-600 text-white py-3"
                 size="lg"
                 disabled={!setupStatus?.setup_complete}
               >
-                <Eye size={22} className="mr-3" />
-                View Timetables
+                <Eye size={20} className="mr-2" />
+                View Student Timetables
               </Button>
               {!setupStatus?.setup_complete && (
                 <p className="text-xs text-gray-500 mt-2">Complete setup first</p>
               )}
+            </div>
+          </Card>
+
+          {/* Faculty Timetables */}
+          <Card className="p-8 shadow-xl bg-white/90 border-2 border-green-200 hover:shadow-2xl transition-all duration-300 group">
+            <div className="text-center">
+              <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:bg-green-200 transition-colors">
+                <Users size={32} className="text-green-600" />
+              </div>
+              <h3 className="text-xl font-bold text-green-800 mb-3">Faculty Timetables</h3>
+              <p className="text-gray-600 mb-6 text-sm leading-relaxed">
+                Individual faculty schedules showing their assigned classes, sections, and room allocations.
+              </p>
+              <Button
+                onClick={() => navigate("/timetables?type=faculty")}
+                className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-3"
+                size="lg"
+                disabled={!setupStatus?.setup_complete}
+              >
+                <Users size={20} className="mr-2" />
+                View Faculty Timetables
+              </Button>
+              {!setupStatus?.setup_complete && (
+                <p className="text-xs text-gray-500 mt-2">Complete setup first</p>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        {/* Additional Options Row */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto mt-8">
+          {/* Master Timetable */}
+          <Card className="p-6 shadow-xl bg-white/90 border-2 border-indigo-200 hover:shadow-2xl transition-all duration-300 group">
+            <div className="flex items-center gap-4">
+              <div className="bg-indigo-100 w-14 h-14 rounded-full flex items-center justify-center group-hover:bg-indigo-200 transition-colors">
+                <CalendarDays size={28} className="text-indigo-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-indigo-800 mb-2">Master Timetable</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Complete institutional view showing all sections, faculty assignments, and room utilization.
+                </p>
+                <Button
+                  onClick={() => navigate("/master-timetable")}
+                  className="bg-gradient-to-r from-indigo-500 to-indigo-600 text-white"
+                  disabled={!setupStatus?.setup_complete}
+                >
+                  <CalendarDays size={18} className="mr-2" />
+                  View Master Schedule
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* Algorithm Flowchart */}
+          <Card className="p-6 shadow-xl bg-white/90 border-2 border-emerald-200 hover:shadow-2xl transition-all duration-300 group">
+            <div className="flex items-center gap-4">
+              <div className="bg-emerald-100 w-14 h-14 rounded-full flex items-center justify-center group-hover:bg-emerald-200 transition-colors">
+                <GitBranch size={28} className="text-emerald-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-emerald-800 mb-2">Algorithm & Documentation</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Interactive visualization of the timetable generation algorithm with test cases and learning materials.
+                </p>
+                <Button
+                  onClick={() => navigate("/algorithm-flowchart")}
+                  className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white"
+                >
+                  <GitBranch size={18} className="mr-2" />
+                  Explore Algorithm
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* Quick Statistics */}
+          <Card className="p-6 shadow-xl bg-white/90 border-2 border-pink-200 hover:shadow-2xl transition-all duration-300">
+            <div className="flex items-center gap-4">
+              <div className="bg-pink-100 w-14 h-14 rounded-full flex items-center justify-center">
+                <BookOpen size={28} className="text-pink-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-pink-800 mb-2">Quick Access</h3>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="bg-blue-50 p-2 rounded">
+                    <span className="text-blue-600 font-medium">Faculty:</span>
+                    <p className="font-bold text-blue-800">{setupStatus?.faculties?.length || 0}</p>
+                  </div>
+                  <div className="bg-purple-50 p-2 rounded">
+                    <span className="text-purple-600 font-medium">Rooms:</span>
+                    <p className="font-bold text-purple-800">{setupStatus?.rooms?.length || 0}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </Card>
         </div>
@@ -237,7 +332,8 @@ export default function Dashboard() {
             )}
             <div className="mt-4 p-3 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-700">
-                💡 <strong>Smart Scheduling:</strong> The timetable generator will automatically respect each faculty member's weekly hour limit and distribute classes optimally across all available days.
+                💡 <strong>Smart Scheduling:</strong> The timetable generator will automatically respect each faculty member's weekly hour limit, 
+                distribute theory and lab classes optimally, and ensure lab subjects get appropriate lab rooms.
               </p>
             </div>
           </Card>
